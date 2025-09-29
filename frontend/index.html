@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Advanced Wingo Predictor</title>
+<style>
+  body { font-family: 'Segoe UI', sans-serif; margin:0; background:#f0f0f0; }
+  #wingoOverlay {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(0,0,0,0.85);
+    color: #fff;
+    padding: 15px;
+    border-radius: 10px;
+    width: 250px;
+    z-index: 9999;
+    box-shadow: 0 0 15px rgba(0,0,0,0.5);
+    text-align: center;
+  }
+  #wingoOverlay h3 { margin:0 0 10px 0; font-size:18px; color:#ffd700; }
+  #prediction { font-size:24px; margin:10px 0; font-weight:bold; }
+  #period, #timer { margin:5px 0; font-size:16px; }
+  #logo {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 10px auto;
+    background-image: url('https://ossimg.in999-in.com/in999/other/h5setting_20240614134813hi2h.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    animation: glow 1.5s infinite alternate;
+  }
+  @keyframes glow {
+    from { box-shadow: 0 0 5px #ffd700; }
+    to { box-shadow: 0 0 20px #ffd700; }
+  }
+</style>
+</head>
+<body>
+
+<div id="wingoOverlay">
+  <div id="logo"></div>
+  <h3>Wingo Predictor</h3>
+  <div id="period">Period: --</div>
+  <div id="prediction">--</div>
+  <div id="timer">Timer: 00:00</div>
+</div>
+
+<script>
+async function fetchResults() {
+  try {
+    const response = await fetch('https://wingo.oss-ap-southeast-7.aliyuncs.com/WinGo_1_20250929100010611_past100_draws?r=' + Date.now());
+    const data = await response.json();
+    const pastResults = data.slice(1, 101); // ignore first pending
+    return pastResults.map(item => ({ num: parseInt(item.num), bs: item.bs }));
+  } catch (err) {
+    console.error('Error fetching results:', err);
+    return [];
+  }
+}
+
+function predictNext(results) {
+  if (!results.length) return 'Small';
+
+  const bsWeights = { Big: 0, Small: 0 };
+  const streakLimit = 5; // max streak before we expect break
+
+  // Weighted scoring (recent results count more)
+  results.forEach((r, i) => {
+    const weight = Math.pow(0.85, results.length - i - 1); // recent higher weight
+    bsWeights[r.bs] += weight;
+  });
+
+  // Streak analysis: check last consecutive Big or Small
+  let lastBS = results[results.length - 1].bs;
+  let streak = 1;
+  for (let i = results.length - 2; i >= 0; i--) {
+    if (results[i].bs === lastBS) streak++;
+    else break;
+  }
+  if (streak >= streakLimit) {
+    // Expect a break in streak
+    lastBS = lastBS === 'Big' ? 'Small' : 'Big';
+  }
+
+  // Sequence detection (last 4 results)
+  const seq = results.slice(-4).map(r => r.bs).join('-');
+  // simple example: if last 4 = Big-Small-Big-Small, predict Small
+  if (seq === 'Big-Small-Big-Small') lastBS = 'Big';
+  if (seq === 'Small-Big-Small-Big') lastBS = 'Small';
+
+  // Combine weighted and streak/sequence analysis
+  const predicted = bsWeights.Big >= bsWeights.Small ? 'Big' : 'Small';
+  return lastBS; // prioritize streak/sequence for final prediction
+}
+
+function getCurrentPeriod() {
+  const el = document.querySelector('div[data-v-3cbad787].TimeLeft__C-id');
+  return el ? el.textContent.trim() : '--';
+}
+
+function getTimer() {
+  const timerEl = document.querySelector('div[data-v-3cbad787].TimeLeft__C-time');
+  if (!timerEl) return '00:00';
+  const digits = timerEl.querySelectorAll('div');
+  if (!digits || digits.length < 5) return '00:00';
+  return `${digits[3].textContent}${digits[4].textContent}`;
+}
+
+async function updateOverlay() {
+  const results = await fetchResults();
+  const nextBS = predictNext(results);
+
+  document.getElementById('prediction').textContent = nextBS;
+  document.getElementById('period').textContent = 'Period: ' + getCurrentPeriod();
+  document.getElementById('timer').textContent = 'Timer: ' + getTimer();
+}
+
+// Initial update
+updateOverlay();
+
+// Auto-update every 3 seconds
+setInterval(updateOverlay, 3000);
+</script>
+
+</body>
+</html>
