@@ -1,53 +1,131 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Wingo Predictor</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #0f172a;
-      color: white;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-    }
-    .overlay {
-      background: rgba(17, 24, 39, 0.9);
-      border: 2px solid #38bdf8;
-      border-radius: 12px;
-      padding: 20px;
-      text-align: center;
-      width: 300px;
-      box-shadow: 0 0 20px #38bdf8;
-    }
-    .logo {
-      width: 120px;
-      height: 40px;
-      margin: 0 auto 10px auto;
-      background-size: contain;
-      background-repeat: no-repeat;
-      background-position: center;
-      background-image: url("https://ossimg.in999-in.com/in999/other/h5setting_20240614134813hi2h.png");
-    }
-    .highlight {
-      color: #38bdf8;
-      font-weight: bold;
-      font-size: 20px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wingo AI Predictor</title>
+    <style>
+        body {
+            background: #0d1117;
+            font-family: 'Segoe UI', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding-top: 50px;
+            color: #fff;
+        }
+        #overlay {
+            background: rgba(25, 25, 30, 0.95);
+            border-radius: 15px;
+            padding: 20px 30px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+            max-width: 300px;
+            text-align: center;
+        }
+        #overlay h2 {
+            margin-bottom: 15px;
+            color: #00ffff;
+            font-size: 1.5rem;
+        }
+        #prediction span {
+            display: inline-block;
+            margin: 5px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            background: #00ffff;
+            color: #000;
+            font-weight: bold;
+        }
+        #period, #timer {
+            margin-top: 10px;
+            font-size: 1.1rem;
+        }
+        .logo {
+            width: 100px;
+            height: 40px;
+            margin: 0 auto 15px auto;
+            background-image: url('https://ossimg.in999-in.com/in999/other/h5setting_20240614134813hi2h.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            filter: drop-shadow(0 0 5px #00ffff);
+        }
+    </style>
 </head>
 <body>
-  <div class="overlay">
-    <div class="logo"></div>
-    <div id="period">Period: loading...</div>
-    <div id="timer">Timer: --:--</div>
-    <div id="prediction" class="highlight">Prediction: loading...</div>
-  </div>
 
-  <script src="script.js"></script>
+<div id="overlay">
+    <div class="logo"></div>
+    <h2>Wingo AI Predictor</h2>
+    <div id="period">Period: --</div>
+    <div id="timer">Timer: --:--</div>
+    <div id="prediction">Next: <span>--</span></div>
+</div>
+
+<script>
+    // ==== Configuration ====
+    const NUM_RESULTS_TO_USE = 20; // last 20 results for prediction
+
+    // ==== Functions ====
+    function getLastResults() {
+        // Replace with your site's actual selector
+        const rows = document.querySelectorAll('.record-body .van-row');
+        const results = [];
+        rows.forEach(row => {
+            const numEl = row.querySelector('.record-body-num');
+            const bsEl = row.querySelector('span');
+            const periodEl = row.querySelector('.van-col.van-col--10');
+            if(numEl && bsEl && periodEl) {
+                results.push({
+                    num: parseInt(numEl.textContent.trim()),
+                    bs: bsEl.textContent.trim(),
+                    period: periodEl.textContent.trim()
+                });
+            }
+        });
+        return results.reverse().slice(0, NUM_RESULTS_TO_USE);
+    }
+
+    function predictNext(results) {
+        if(!results.length) return {bs: '--'};
+
+        // Simple streak & pattern-based AI logic
+        let lastBS = results[0].bs;
+        let streak = 1;
+        for(let i = 1; i < results.length; i++) {
+            if(results[i].bs === lastBS) streak++;
+            else break;
+        }
+
+        // Predict opposite if streak > 2, else repeat
+        let predictedBS = streak >= 2 ? (lastBS === 'Big' ? 'Small' : 'Big') : lastBS;
+        return {bs: predictedBS};
+    }
+
+    function updateOverlay() {
+        const results = getLastResults();
+        const prediction = predictNext(results);
+
+        // Update period
+        const periodEl = document.querySelector('.TimeLeft__C-id');
+        document.getElementById('period').textContent = "Period: " + (periodEl ? periodEl.textContent : '--');
+
+        // Update timer
+        const timerEls = document.querySelectorAll('.TimeLeft__C-time div');
+        let timerText = '--:--';
+        if(timerEls.length >= 5){
+            timerText = timerEls[0].textContent + timerEls[1].textContent + ":" +
+                        timerEls[3].textContent + timerEls[4].textContent;
+        }
+        document.getElementById('timer').textContent = "Timer: " + timerText;
+
+        // Update prediction
+        document.getElementById('prediction').innerHTML = `Next: <span>${prediction.bs}</span>`;
+    }
+
+    // ==== Auto-update ====
+    updateOverlay();
+    setInterval(updateOverlay, 3000);
+</script>
+
 </body>
 </html>
