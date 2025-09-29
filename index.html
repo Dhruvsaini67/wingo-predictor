@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Wingo Predictor</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .overlay {
+      background: rgba(17, 24, 39, 0.9);
+      border: 2px solid #38bdf8;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      width: 300px;
+      box-shadow: 0 0 20px #38bdf8;
+    }
+    .logo {
+      width: 120px;
+      height: 40px;
+      margin: 0 auto 10px auto;
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      background-image: url("https://ossimg.in999-in.com/in999/other/h5setting_20240614134813hi2h.png");
+    }
+    .highlight {
+      color: #38bdf8;
+      font-weight: bold;
+      font-size: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="overlay">
+    <div class="logo"></div>
+    <div id="period">Period: loading...</div>
+    <div id="timer">Timer: --:--</div>
+    <div id="prediction" class="highlight">Prediction: loading...</div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
