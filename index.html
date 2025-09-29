@@ -3,144 +3,104 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Enhanced Live Wingo Predictor</title>
+<title>Live Wingo Predictor</title>
 <style>
-  body {
-    font-family: monospace;
-    background: #111;
-    color: #fff;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    padding-top: 20px;
-  }
-  #overlay {
-    background: rgba(0,0,0,0.9);
-    padding: 15px 20px;
-    border-radius: 10px;
-    text-align: center;
-    width: 270px;
-    box-shadow: 0 0 25px #ff0;
-  }
-  #overlay h3 {
-    margin: 0 0 10px 0;
-    color: #ff0;
-    font-size: 18px;
-  }
-  #overlay .period {
-    margin-bottom: 10px;
-    font-size: 14px;
-    color: #0ff;
-  }
-  #overlay .prediction {
-    font-size: 16px;
-    margin-bottom: 5px;
-  }
-  #overlay .bigsmall {
-    font-size: 20px;
-    color: #f0f;
-    font-weight: bold;
-    margin-bottom: 5px;
-  }
-  #overlay .pattern {
-    font-size: 12px;
-    color: #ff0;
-    margin-bottom: 5px;
-  }
-  #overlay .timer {
-    margin-top: 10px;
-    font-size: 16px;
-    color: #0f0;
-  }
-  #logo {
-    width: 100px;
-    height: 40px;
-    margin: 0 auto 10px auto;
-    background: url('https://ossimg.in999-in.com/in999/other/h5setting_20240614134813hi2h.png') no-repeat center/contain;
-    filter: drop-shadow(0 0 8px #ff0);
-  }
+body {
+  font-family: monospace;
+  background: #111;
+  color: #fff;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 20px;
+}
+#overlay {
+  background: rgba(0,0,0,0.9);
+  padding: 15px 20px;
+  border-radius: 10px;
+  text-align: center;
+  width: 270px;
+  box-shadow: 0 0 25px #ff0;
+}
+#overlay h3 { margin: 0 0 10px 0; color: #ff0; font-size: 18px; }
+#overlay .period { margin-bottom: 10px; font-size: 14px; color: #0ff; }
+#overlay .bigsmall { font-size: 20px; color: #f0f; font-weight: bold; margin-bottom: 5px; }
+#overlay .pattern { font-size: 12px; color: #ff0; margin-bottom: 5px; }
+#overlay .timer { margin-top: 10px; font-size: 16px; color: #0f0; }
+#logo {
+  width: 100px; height: 40px; margin: 0 auto 10px auto;
+  background: url('https://ossimg.in999-in.com/in999/other/h5setting_20240614134813hi2h.png') no-repeat center/contain;
+  filter: drop-shadow(0 0 8px #ff0);
+}
 </style>
 </head>
 <body>
 <div id="overlay">
   <div id="logo"></div>
-  <h3>Enhanced Wingo Predictor</h3>
+  <h3>Live Wingo Predictor</h3>
   <div class="period" id="period">Period: --</div>
-  <div class="prediction" id="prediction">Predicting...</div>
   <div class="bigsmall" id="bigsmall">--</div>
   <div class="pattern" id="pattern">Analyzing patterns...</div>
   <div class="timer" id="timer">--:--</div>
 </div>
 
 <script>
-const API_URL = 'https://in999.games/WinGo/WinGo_1M.json?ts=';
-
-// Fetch last 20 results
-async function fetchResults() {
-    try {
-        const res = await fetch(API_URL + Date.now());
-        const data = await res.json();
-        return data.slice(-20);
-    } catch (e) {
-        console.error('Failed to fetch:', e);
-        return [];
+// Get last 20 results from page
+function getLastResults() {
+  const rows = document.querySelectorAll('.record-body .van-row');
+  const results = [];
+  rows.forEach(row => {
+    const numEl = row.querySelector('.record-body-num');
+    const bsEl = row.querySelector('span');
+    if (numEl && bsEl) {
+      results.push({ num: parseInt(numEl.textContent), bs: bsEl.textContent.trim() });
     }
+  });
+  return results.slice(-20);
 }
 
-// Predict next Big/Small using streak & pattern detection
+// Predict Big/Small based on streak
 function predictNext(results) {
-    if (!results.length) return { bigSmall: '--', period: '--', patternDesc: '' };
-    
-    let streakCount = 1;
-    let lastBS = results[results.length-1].bs;
-    let patternDesc = '';
-
-    // Detect streak
-    for (let i = results.length-2; i >= 0; i--) {
-        if (results[i].bs === lastBS) streakCount++;
-        else break;
-    }
-
-    patternDesc = `Last ${streakCount} result(s) ${lastBS}`;
-    let predictedBS;
-
-    // Predict opposite if streak > 3, else continue streak
-    if (streakCount >= 3) {
-        predictedBS = lastBS === 'Big' ? 'Small' : 'Big';
-        patternDesc += ` → Streak break likely`;
-    } else {
-        predictedBS = lastBS; 
-        patternDesc += ` → Streak may continue`;
-    }
-
-    const latestPeriod = results[results.length-1].period;
-    return { bigSmall: predictedBS, period: latestPeriod, patternDesc };
+  if (!results.length) return { bigSmall: '--', patternDesc: '' };
+  let lastBS = results[results.length-1].bs;
+  let streak = 1;
+  for (let i = results.length-2; i >= 0; i--) {
+    if (results[i].bs === lastBS) streak++;
+    else break;
+  }
+  let predicted = streak >= 3 ? (lastBS === 'Big' ? 'Small' : 'Big') : lastBS;
+  let patternDesc = `Last ${streak} result(s) ${lastBS}` + (streak >=3 ? ' → Streak break likely' : ' → Streak may continue');
+  return { bigSmall: predicted, patternDesc };
 }
 
-// Timer
+// Update period
+function updatePeriod() {
+  const periodEl = document.querySelector('.TimeLeft__C-id');
+  return periodEl ? periodEl.textContent.trim() : '--';
+}
+
+// Update timer
 function updateTimer() {
-    const now = new Date();
-    const minutes = String(now.getMinutes()).padStart(2,'0');
-    const seconds = String(now.getSeconds()).padStart(2,'0');
-    document.getElementById('timer').textContent = `${minutes}:${seconds}`;
+  const timerEls = document.querySelectorAll('.TimeLeft__C-time div');
+  if (!timerEls.length) return '--:--';
+  const minutes = timerEls[0]?.textContent + timerEls[1]?.textContent;
+  const seconds = timerEls[3]?.textContent + timerEls[4]?.textContent;
+  return `${minutes}:${seconds}`;
 }
 
 // Update overlay
-async function updateOverlay() {
-    const results = await fetchResults();
-    const prediction = predictNext(results);
-
-    document.getElementById('period').textContent = 'Period: ' + prediction.period;
-    document.getElementById('bigsmall').textContent = prediction.bigSmall;
-    document.getElementById('prediction').textContent = 'Next Result Prediction:';
-    document.getElementById('pattern').textContent = prediction.patternDesc;
+function updateOverlay() {
+  const results = getLastResults();
+  const prediction = predictNext(results);
+  document.getElementById('period').textContent = 'Period: ' + updatePeriod();
+  document.getElementById('bigsmall').textContent = prediction.bigSmall;
+  document.getElementById('pattern').textContent = prediction.patternDesc;
+  document.getElementById('timer').textContent = updateTimer();
 }
 
-// Auto-update every 3 seconds
-setInterval(updateOverlay, 3000);
-setInterval(updateTimer, 1000);
+// Auto-update every second
+setInterval(updateOverlay, 1000);
 updateOverlay();
-updateTimer();
 </script>
 </body>
 </html>
